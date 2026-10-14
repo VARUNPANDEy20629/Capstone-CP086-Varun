@@ -1,4 +1,4 @@
-# Capstone-CP086-Varun
+# Capstone-CP086-Varun & Sujan 
 # 💪 FitTrack — Gym Membership and Access Management System
 
 ![Java](https://img.shields.io/badge/Java-17%2B-orange?logo=openjdk)
