@@ -11,7 +11,7 @@
 
 ![Java](https://img.shields.io/badge/Java-17%2B-1f6feb?logo=openjdk&logoColor=white)
 ![JavaFX](https://img.shields.io/badge/UI-JavaFX-6f42c1)
-![MySQL](https://img.shields.io/badge/Database-MySQL-1f6feb?logo=mysql&logoColor=white)
+![MongoDB](https://img.shields.io/badge/Database-MongoDB-1f6feb?logo=mongodb&logoColor=white)
 ![Maven](https://img.shields.io/badge/Build-Maven-6e7781?logo=apachemaven&logoColor=white)
 ![Status](https://img.shields.io/badge/Status-In%20Development-6f42c1)
 
@@ -50,7 +50,7 @@ A gym owner loses revenue because **renewals are missed** and **attendance is no
 
 ### The proposed solution
 
-FitTrack stores membership plans, registers members with a start date, and calculates expiry dates automatically. It verifies membership validity before granting entry, logs every access attempt, and gives the owner dashboards for expiring memberships, revenue, and active members.
+FitTrack stores membership plans, registers members with a start date, and calculates expiry dates automatically. It verifies membership validity before granting entry, logs every access attempt, and gives the owner dashboards for expiring memberships, revenue, and active members. Data is stored in **MongoDB** as flexible documents.
 
 ### Objectives
 
@@ -159,8 +159,8 @@ flowchart TD
 | **Java 17+** | Application logic |
 | **JavaFX** | Desktop user interface |
 | **JavaFX CSS** | UI styling |
-| **MySQL** | Persistent relational data storage |
-| **JDBC** | Database connectivity |
+| **MongoDB** | Document database for persistent data storage |
+| **MongoDB Java Driver (Sync)** | Connects the Java application to MongoDB and runs queries |
 | **Maven** | Dependency and build management |
 | **Git** | Version control |
 | **GitHub** | Source code hosting |
@@ -178,8 +178,8 @@ FitTrack uses a layered design that separates interface, business rules, and dat
 | Control | JavaFX Controllers | Handle UI events and call services |
 | Business Logic | Membership Service | Plans, registration, expiry, renewal, revenue |
 | Business Logic | Access Service | Eligibility check, allow or block, access logging |
-| Connectivity | JDBC Layer | Queries and transactions |
-| Persistence | MySQL | Users, Memberships, Payments, Access Logs |
+| Connectivity | MongoDB Java Driver | Queries, updates, and aggregation pipelines |
+| Persistence | MongoDB | Users, Memberships, Payments, Access Logs |
 
 ```mermaid
 flowchart TB
@@ -195,32 +195,34 @@ flowchart TB
         AS[Access Service]
     end
     subgraph DA[Connectivity Layer]
-        JD[JDBC Layer]
+        MD2[MongoDB Java Driver]
     end
-    subgraph DB[(MySQL Database)]
-        U[Users]
-        M[Memberships]
-        P[Payments]
-        L[Access Logs]
+    subgraph DB[MongoDB: fittrack database]
+        U[(users)]
+        PL[(membership_plans)]
+        M[(memberships)]
+        P[(payments)]
+        L[(access_logs)]
     end
 
     AD --> JC
     MD --> JC
     JC --> MS
     JC --> AS
-    MS --> JD
-    AS --> JD
-    JD --> U
-    JD --> M
-    JD --> P
-    JD --> L
+    MS --> MD2
+    AS --> MD2
+    MD2 --> U
+    MD2 --> PL
+    MD2 --> M
+    MD2 --> P
+    MD2 --> L
 
     style AD fill:#6f42c1,color:#ffffff,stroke:#6f42c1
     style MD fill:#6f42c1,color:#ffffff,stroke:#6f42c1
     style JC fill:#1f6feb,color:#ffffff,stroke:#1f6feb
     style MS fill:#1f6feb,color:#ffffff,stroke:#1f6feb
     style AS fill:#1f6feb,color:#ffffff,stroke:#1f6feb
-    style JD fill:#6e7781,color:#ffffff,stroke:#6e7781
+    style MD2 fill:#6e7781,color:#ffffff,stroke:#6e7781
 ```
 
 > This diagram shows the **intended architecture**. It has not been verified against a completed implementation.
@@ -229,66 +231,89 @@ flowchart TB
 
 ## 🗄️ Database Design
 
-The schema below is a **suggested design**. Adjust names and types to match your final implementation. Membership plans are stored in their own table so that plan changes do not rewrite history.
+FitTrack uses **MongoDB**, a document database. The structure below is a **suggested design**; adjust field names to match your final implementation. Data is grouped into collections instead of relational tables, and related data is linked by `ObjectId` references.
 
-| Table | Purpose | Key columns |
-|-------|---------|-------------|
-| `users` | Admins and members | `user_id`, `name`, `email`, `phone`, `password_hash`, `role` |
-| `membership_plans` | Plan catalogue | `plan_id`, `name`, `duration_days`, `price` |
-| `memberships` | A member's subscription | `membership_id`, `user_id`, `plan_id`, `start_date`, `expiry_date`, `status` |
-| `payments` | Money received | `payment_id`, `membership_id`, `amount`, `payment_date` |
-| `access_logs` | Entry attempts | `log_id`, `user_id`, `attempt_time`, `allowed`, `reason` |
+| Collection | Purpose | Key fields |
+|------------|---------|------------|
+| `users` | Admins and members | `_id`, `name`, `email`, `phone`, `passwordHash`, `role` |
+| `membership_plans` | Plan catalogue | `_id`, `name`, `durationDays`, `price` |
+| `memberships` | A member's subscription | `_id`, `userId`, `planId`, `planSnapshot`, `startDate`, `expiryDate` |
+| `payments` | Money received | `_id`, `membershipId`, `userId`, `amount`, `paymentDate` |
+| `access_logs` | Entry attempts | `_id`, `userId`, `attemptTime`, `allowed`, `reason` |
 
-```sql
-CREATE DATABASE IF NOT EXISTS fittrack;
-USE fittrack;
+### Example documents
 
-CREATE TABLE users (
-    user_id       INT AUTO_INCREMENT PRIMARY KEY,
-    name          VARCHAR(100) NOT NULL,
-    email         VARCHAR(150) NOT NULL UNIQUE,
-    phone         VARCHAR(20),
-    password_hash VARCHAR(255) NOT NULL,
-    role          ENUM('ADMIN', 'MEMBER') NOT NULL DEFAULT 'MEMBER'
-);
+```json
+// users
+{
+  "_id": { "$oid": "665f00000000000000000001" },
+  "name": "Asha Rao",
+  "email": "asha@example.com",
+  "phone": "9XXXXXXXXX",
+  "passwordHash": "<hashed-password>",
+  "role": "MEMBER"
+}
 
-CREATE TABLE membership_plans (
-    plan_id       INT AUTO_INCREMENT PRIMARY KEY,
-    name          VARCHAR(50)   NOT NULL,
-    duration_days INT           NOT NULL CHECK (duration_days > 0),
-    price         DECIMAL(10,2) NOT NULL CHECK (price >= 0)
-);
+// membership_plans
+{
+  "_id": { "$oid": "665f00000000000000000010" },
+  "name": "Quarterly",
+  "durationDays": 90,
+  "price": 4500
+}
 
-CREATE TABLE memberships (
-    membership_id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id       INT  NOT NULL,
-    plan_id       INT  NOT NULL,
-    start_date    DATE NOT NULL,
-    expiry_date   DATE NOT NULL,
-    status        ENUM('ACTIVE', 'EXPIRED') NOT NULL DEFAULT 'ACTIVE',
-    FOREIGN KEY (user_id) REFERENCES users(user_id),
-    FOREIGN KEY (plan_id) REFERENCES membership_plans(plan_id)
-);
+// memberships
+{
+  "_id": { "$oid": "665f00000000000000000020" },
+  "userId": { "$oid": "665f00000000000000000001" },
+  "planId": { "$oid": "665f00000000000000000010" },
+  "planSnapshot": { "name": "Quarterly", "durationDays": 90, "price": 4500 },
+  "startDate": { "$date": "2026-10-01T00:00:00Z" },
+  "expiryDate": { "$date": "2026-12-30T00:00:00Z" }
+}
 
-CREATE TABLE payments (
-    payment_id    INT AUTO_INCREMENT PRIMARY KEY,
-    membership_id INT           NOT NULL,
-    amount        DECIMAL(10,2) NOT NULL,
-    payment_date  DATE          NOT NULL,
-    FOREIGN KEY (membership_id) REFERENCES memberships(membership_id)
-);
+// payments
+{
+  "_id": { "$oid": "665f00000000000000000030" },
+  "membershipId": { "$oid": "665f00000000000000000020" },
+  "userId": { "$oid": "665f00000000000000000001" },
+  "amount": 4500,
+  "paymentDate": { "$date": "2026-10-01T00:00:00Z" }
+}
 
-CREATE TABLE access_logs (
-    log_id       INT AUTO_INCREMENT PRIMARY KEY,
-    user_id      INT         NOT NULL,
-    attempt_time DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    allowed      TINYINT(1)  NOT NULL,
-    reason       VARCHAR(100),
-    FOREIGN KEY (user_id) REFERENCES users(user_id)
-);
+// access_logs
+{
+  "_id": { "$oid": "665f00000000000000000040" },
+  "userId": { "$oid": "665f00000000000000000001" },
+  "attemptTime": { "$date": "2026-10-14T06:30:00Z" },
+  "allowed": true,
+  "reason": "Active membership"
+}
 ```
 
-> Whether a membership is currently active should be **calculated from `expiry_date` and today's date**, not trusted from a stored flag alone, because a stored status can become stale.
+> The example data above is illustrative only. The comments (`// ...`) are for readability and are not valid JSON.
+
+### Design decisions
+
+| Decision | Reason |
+|----------|--------|
+| **Plan snapshot inside `memberships`** | Keeps a member's price and duration unchanged even if the plan is edited later |
+| **Separate `payments` collection** | Payments grow over time and are aggregated by date for revenue reports |
+| **Separate `access_logs` collection** | Logs grow quickly and should not bloat membership documents |
+| **References using `ObjectId`** | Links documents without duplicating user data |
+| **Dates stored as BSON dates** | Enables correct range queries and sorting |
+
+### Suggested indexes
+
+```javascript
+db.users.createIndex({ email: 1 }, { unique: true })
+db.memberships.createIndex({ userId: 1 })
+db.memberships.createIndex({ expiryDate: 1 })
+db.payments.createIndex({ paymentDate: 1 })
+db.access_logs.createIndex({ userId: 1, attemptTime: -1 })
+```
+
+> Whether a membership is currently active should be **calculated from `expiryDate` and the current date**, not trusted from a stored flag, because a stored status can become stale.
 
 ---
 
@@ -299,30 +324,31 @@ CREATE TABLE access_logs (
 | **Date arithmetic** | Expiry = start date + plan duration |
 | **Rule-based access control** | Entry depends on whether the membership is active |
 | **Range filtering** | "Expiring soon" selects expiry dates within the next 7 days |
-| **Aggregation** | Monthly revenue as a sum of payments; active members as a count |
+| **Aggregation pipeline** | Monthly revenue as a sum of payments; active members as a distinct count |
 | **CRUD operations** | Manage users, plans, memberships, and payments |
 | **Audit logging** | Record every allowed and denied entry attempt |
-| **Layered design** | Controllers, services, and JDBC kept separate |
+| **Indexing** | Speeds up expiry, payment-date, and log lookups |
+| **Layered design** | Controllers, services, and the database driver kept separate |
 
 ### Core logic (pseudocode)
 
 ```text
-expiry_date = start_date + plan.duration_days
+expiryDate = startDate + plan.durationDays
 
-is_active   = (today <= expiry_date)
+isActive   = (today <= expiryDate)
 
-expiring_soon = (today <= expiry_date) and (expiry_date <= today + 7 days)
+expiringSoon = (today <= expiryDate) and (expiryDate <= today + 7 days)
 
 on check-in:
-    if is_active: allow, log(allowed = true)
-    else:         block, log(allowed = false, reason = "Membership expired")
+    if isActive: allow, log(allowed = true)
+    else:        block, log(allowed = false, reason = "Membership expired")
 ```
 
 ### Edge cases to handle
 
 - The **expiry day itself** counts as active.
 - Month-end and leap-year arithmetic when durations are expressed in months.
-- Comparing **dates** versus **date-times** consistently.
+- **Time zones:** MongoDB stores dates in UTC, so decide whether expiry is compared by calendar day in the gym's local time zone.
 - Renewals before expiry, which should extend from the current expiry rather than from today.
 
 ---
@@ -331,30 +357,41 @@ on check-in:
 
 | Metric | Definition |
 |--------|------------|
-| **Monthly revenue** | Sum of `payments.amount` where `payment_date` falls within the chosen calendar month |
-| **Active members** | Count of distinct members with at least one membership where `expiry_date >= today` |
+| **Monthly revenue** | Sum of `payments.amount` where `paymentDate` falls within the chosen calendar month |
+| **Active members** | Count of distinct `userId` values with a membership where `expiryDate >= today` |
 | **Expiring soon** | Members whose active membership expires within the next 7 days |
 
-### Example queries
+### Example queries (mongosh)
 
-```sql
--- Monthly revenue for October 2026
-SELECT COALESCE(SUM(amount), 0) AS monthly_revenue
-FROM payments
-WHERE payment_date >= '2026-10-01'
-  AND payment_date <  '2026-11-01';
+```javascript
+// Monthly revenue for October 2026
+db.payments.aggregate([
+  { $match: {
+      paymentDate: {
+        $gte: ISODate("2026-10-01T00:00:00Z"),
+        $lt:  ISODate("2026-11-01T00:00:00Z")
+      }
+  }},
+  { $group: { _id: null, monthlyRevenue: { $sum: "$amount" } } }
+])
 
--- Number of currently active members
-SELECT COUNT(DISTINCT user_id) AS active_members
-FROM memberships
-WHERE expiry_date >= CURDATE();
+// Number of currently active members
+db.memberships.aggregate([
+  { $match: { expiryDate: { $gte: new Date() } } },
+  { $group: { _id: "$userId" } },
+  { $count: "activeMembers" }
+])
 
--- Members expiring within 7 days
-SELECT u.name, u.phone, m.expiry_date
-FROM memberships m
-JOIN users u ON u.user_id = m.user_id
-WHERE m.expiry_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY);
+// Memberships expiring within 7 days
+db.memberships.find({
+  expiryDate: {
+    $gte: new Date(),
+    $lte: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+  }
+})
 ```
+
+> If the monthly revenue query returns no document, no payments were made that month, so report revenue as 0.
 
 > **Revenue and active members are different measures.** Revenue counts money received in a period, while active members counts people with valid plans today. A large annual payment raises revenue in one month but keeps the member active for twelve.
 
@@ -366,8 +403,9 @@ WHERE m.expiry_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY);
 |------|----------|
 | **Role separation** | Administrators and members see different interfaces and permissions |
 | **Password storage** | Store salted hashes (for example BCrypt), never plain text |
-| **SQL injection** | Use `PreparedStatement` for all database queries |
-| **Credentials** | Keep database credentials out of source control |
+| **Query safety** | Build queries with the driver's `Filters` helpers and typed values; never concatenate raw user input into query documents |
+| **Database access** | Enable MongoDB authentication and use a least-privilege database user |
+| **Credentials** | Keep the connection string and passwords out of source control |
 | **Biometric data** | If fingerprint support is built, follow the SDK vendor's guidance and avoid storing raw biometric images |
 
 > The measures above are the **intended practices**. Verify each against the final code before describing it as implemented.
@@ -382,7 +420,8 @@ WHERE m.expiry_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY);
 
 - JDK 17 or later
 - Apache Maven 3.8+
-- MySQL Server 8.x
+- MongoDB Community Server (local) or a MongoDB Atlas cluster
+- `mongosh` (MongoDB Shell) for database setup
 - Git
 - An IDE with Java and JavaFX support
 
@@ -393,27 +432,58 @@ git clone https://github.com/<your-username>/<your-repository>.git
 cd <your-repository>
 ```
 
-### 2. Set up the database
+### 2. Start MongoDB
+
+Make sure the MongoDB server is running, then connect with the shell:
 
 ```bash
-mysql -u <your-mysql-user> -p
+mongosh "mongodb://localhost:27017"
 ```
 
-Run the SQL from the [Database Design](#️-database-design) section to create the `fittrack` database and its tables.
+### 3. Create the database and indexes
 
-### 3. Configure the database connection
+MongoDB creates collections on first use, but creating indexes up front is recommended:
 
-Set your connection details in the project's configuration location (for example `src/main/resources/db.properties` or a constants class):
+```javascript
+use fittrack
+
+db.users.createIndex({ email: 1 }, { unique: true })
+db.memberships.createIndex({ userId: 1 })
+db.memberships.createIndex({ expiryDate: 1 })
+db.payments.createIndex({ paymentDate: 1 })
+db.access_logs.createIndex({ userId: 1, attemptTime: -1 })
+```
+
+### 4. Add the MongoDB driver to Maven
+
+Add the synchronous Java driver to `pom.xml`, using the current version from the official MongoDB documentation:
+
+```xml
+<dependency>
+    <groupId>org.mongodb</groupId>
+    <artifactId>mongodb-driver-sync</artifactId>
+    <version>&lt;latest-driver-version&gt;</version>
+</dependency>
+```
+
+### 5. Configure the database connection
+
+Set your connection details in the project's configuration location (for example `src/main/resources/application.properties` or a constants class):
 
 ```properties
-db.url=jdbc:mysql://localhost:3306/fittrack
-db.user=<your-mysql-user>
-db.password=<your-mysql-password>
+mongodb.uri=mongodb://localhost:27017
+mongodb.database=fittrack
+```
+
+For a database with authentication or an Atlas cluster, use the connection string provided by your deployment:
+
+```properties
+mongodb.uri=mongodb://<username>:<password>@<host>:27017/?authSource=<auth-database>
 ```
 
 > Do not commit real credentials. Add the configuration file to `.gitignore` if it contains secrets.
 
-### 4. Build and run
+### 6. Build and run
 
 ```bash
 mvn clean install
@@ -433,8 +503,9 @@ mvn javafx:run
 | Expiry notifications | Email or SMS reminders before a plan lapses |
 | Trainer assignment | Assign trainers and list each trainer's members (CP-086 stretch) |
 | Membership freeze | Pause a membership for up to 30 days and extend expiry (CP-086 stretch) |
-| Attendance analytics | Visit frequency, peak hours, and inactive members |
+| Attendance analytics | Visit frequency, peak hours, and inactive members using aggregation pipelines |
 | Reports and charts | Exportable and visual revenue and membership reports |
+| Multi-document transactions | Make registration and payment atomic (requires a MongoDB replica set) |
 
 ---
 
@@ -443,9 +514,10 @@ mvn javafx:run
 | Area | Concept demonstrated |
 |------|----------------------|
 | Layered architecture | Separation of UI, controllers, services, and data access |
-| Database design | Normalised tables, keys, and constraints |
-| JDBC and SQL | Connecting Java to MySQL, joins, filtering, and aggregation |
-| Date handling | Expiry calculation, boundary cases, and range queries |
+| NoSQL data modelling | Collections, references, and snapshots in a document database |
+| MongoDB and Java | Using the MongoDB Java Driver for CRUD, filtering, and aggregation |
+| Indexing | Choosing indexes for common query patterns |
+| Date handling | Expiry calculation, UTC storage, boundary cases, and range queries |
 | Access rules | Turning business rules into testable conditions |
 | Business reporting | Monthly aggregation and the difference between revenue and active members |
 | Desktop UI | Building role-based screens with JavaFX |
