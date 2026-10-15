@@ -1,4 +1,4 @@
-# Capstone-CP086-Varun & Sujan 
+# Capstone-CP086-Varun & Sujan
 # 💪 FitTrack
 
 ### Gym Membership and Access Management System
