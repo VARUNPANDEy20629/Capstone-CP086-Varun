@@ -540,7 +540,7 @@ mvn javafx:run
 
 ### License
 
-Select an appropriate open-source license (for example MIT or Apache 2.0) and add it as a `LICENSE` file in the repository root. Update this section once chosen.
+Select an appropriate open-source license (for example MIT or Apache 2.0) and add it as a `LICENSE` file in the repository root. Update this section once chosen..
 
 ### Conclusion
 
