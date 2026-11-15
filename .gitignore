@@ -1,0 +1,29 @@
+# Byte-compiled / Object files
+*.class
+*.jar
+*.war
+*.ear
+
+# Package / Build directories
+bin/
+target/
+build/
+out/
+.gradle/
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.iml
+*.iws
+*.ipr
+.project
+.classpath
+.settings/
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+*.tmp
+*.bak
+*.swp

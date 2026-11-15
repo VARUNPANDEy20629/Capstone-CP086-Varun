@@ -1,0 +1,10 @@
+recordId,memberId,memberName,timestamp,status,remarks
+A1001,M1001,Alex Smith,2026-11-15 08:30:00,GRANTED,Access Approved - Active Annual Plan
+A1002,M1005,Bruce Wayne,2026-11-15 09:15:00,GRANTED,Access Approved - Active Half-Yearly Plan
+A1003,M1003,Mike Tyson,2026-11-15 10:00:00,BLOCKED_EXPIRED,DENIED: Membership expired on 2026-11-10. Please renew plan.
+A1004,M1003,Mike Tyson,2026-11-15 13:48:30,BLOCKED_EXPIRED,DENIED: Membership expired on 2026-11-10. Please renew plan.
+A1005,M1006,Robert Paulson,2026-11-15 13:48:30,GRANTED,Access Approved - Plan: Student Special
+A1006,M1004,Alice Cooper,2026-11-15 13:48:30,BLOCKED_FROZEN,DENIED: Membership is currently FROZEN. Unfreeze required.
+A1007,M1003,Mike Tyson,2026-11-15 13:48:34,BLOCKED_EXPIRED,DENIED: Membership expired on 2026-11-10. Please renew plan.
+A1008,M1007,Robert Paulson,2026-11-15 13:48:34,GRANTED,Access Approved - Plan: Student Special
+A1009,M1004,Alice Cooper,2026-11-15 13:48:34,BLOCKED_FROZEN,DENIED: Membership is currently FROZEN. Unfreeze required.

@@ -1,0 +1,9 @@
+memberId,name,contact,planId,planName,startDate,expiryDate,assignedTrainerId,isFrozen,freezeStartDate,frozenDays
+M1001,Alex Smith,555-1001,P04,Annual Ultimate,2026-09-15,2027-09-15,T01,false,,0
+M1002,Sarah Connor,555-1002,P01,Monthly Standard,2026-10-19,2026-11-19,T02,false,,0
+M1003,Mike Tyson,555-1003,P01,Monthly Standard,2026-09-15,2026-11-10,T01,false,,0
+M1004,Alice Cooper,555-1004,P02,Quarterly Pro,2026-10-15,2027-01-29,T03,true,2026-11-13,14
+M1005,Bruce Wayne,555-1005,P03,Half-Yearly Elite,2026-10-15,2027-04-15,T01,false,,0
+M1006,Robert Paulson,555-9999,PT767,Student Special,2026-11-01,2027-01-16,T01,false,,15
+M1007,Robert Paulson,555-9999,PT4624,Student Special,2026-11-01,2027-01-16,T01,false,,15
+M1008,sujan khadka,9380974024,P04,Annual Ultimate,2026-11-15,2027-11-15,None,false,,0
