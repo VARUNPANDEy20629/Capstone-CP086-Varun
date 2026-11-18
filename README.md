@@ -272,6 +272,7 @@ java TestFitTrack
 Developed collaboratively for **Capstone Project CP-086**:
 * **Varun Pandey** (`pandeyvarun2006@gmail.com`)
 * **Sujan Khadka** ('khadkasujan952@gmail.com')
+.
 
 ### Contribution Guidelines:
 1. Always pull latest changes before starting work: `git pull origin main`.
